@@ -1,6 +1,6 @@
 [project]
 name = "deskwright"
-version = "0.2.0"
+version = "0.2.1"
 description = "See and drive a desktop from a shell: screenshots, clicks, keys, windows. Windows, macOS, Linux/X11."
 readme = "README.md"
 license = "MIT"

@@ -38,6 +38,11 @@ desk click 640 420                 # act
 desk shot --window --scale 0.5     # check
 ```
 
+## Known limits
+
+- `type` sends about 50 characters a second; slow apps drop keys if pushed faster.
+- `focus` matches top-level windows. Tabbed apps (Notepad, browsers) share one window, so screenshot to confirm the right tab is in front before keys like `ctrl+w`.
+
 ## Platform notes
 
 - **macOS:** grant your terminal Screen Recording and Accessibility permission (System Settings > Privacy & Security), or screenshots come back blank and input is ignored.

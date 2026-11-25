@@ -103,9 +103,46 @@ def cmd_scroll(a):
     print(f"scrolled {a.n}")
 
 
+def _type_windows(text):
+    # pynput's type() turns shifted characters into '#' on some Windows setups;
+    # KEYEVENTF_UNICODE sends each character as itself, independent of layout.
+    import ctypes
+    from ctypes import wintypes
+
+    class KEYBDINPUT(ctypes.Structure):
+        _fields_ = [("wVk", wintypes.WORD), ("wScan", wintypes.WORD), ("dwFlags", wintypes.DWORD),
+                    ("time", wintypes.DWORD), ("dwExtraInfo", ctypes.c_size_t)]
+
+    class INPUT(ctypes.Structure):
+        class _U(ctypes.Union):
+            _fields_ = [("ki", KEYBDINPUT), ("pad", ctypes.c_byte * 32)]
+        _anonymous_ = ("u",)
+        _fields_ = [("type", wintypes.DWORD), ("u", _U)]
+
+    KEYEVENTF_UNICODE, KEYEVENTF_KEYUP = 0x4, 0x2
+    VK_RETURN = 0x0D
+    send = ctypes.windll.user32.SendInput
+    raw = text.replace("\r\n", "\n").encode("utf-16-le")
+    for unit in (int.from_bytes(raw[k:k + 2], "little") for k in range(0, len(raw), 2)):
+        evs = []
+        for up in (0, KEYEVENTF_KEYUP):
+            i = INPUT(type=1)
+            if unit == 0x0A:
+                i.ki = KEYBDINPUT(VK_RETURN, 0, up, 0, 0)
+            else:
+                i.ki = KEYBDINPUT(0, unit, KEYEVENTF_UNICODE | up, 0, 0)
+            evs.append(i)
+        arr = (INPUT * 2)(*evs)
+        send(2, arr, ctypes.sizeof(INPUT))
+        time.sleep(0.02)
+
+
 def cmd_type(a):
-    from pynput.keyboard import Controller
-    Controller().type(a.text)
+    if sys.platform == "win32":
+        _type_windows(a.text)
+    else:
+        from pynput.keyboard import Controller
+        Controller().type(a.text)
     print("typed")
 
 
@@ -174,6 +211,11 @@ def cmd_open(a):
 
 def main():
     _dpi_aware()
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except Exception:
+            pass
     p = argparse.ArgumentParser(prog="desk", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("shot"); s.add_argument("--screen", type=int); s.add_argument("--scale", type=float, default=1.0)
