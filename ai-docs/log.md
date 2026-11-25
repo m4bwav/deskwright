@@ -1,0 +1,2 @@
+# Log
+- 2026-11-25: built desk.ps1 and published it as public m4bwav/deskwright. Claude in Chrome was unavailable (`/chrome` not offered in this environment), hence a shell-only route. Chrome Remote Desktop host is not installed on DESKTOP-7KS2S6E; the CRD page lists only "MarkMainD2", last online 2026-07-26. Setup needs Mark to pick a name and PIN. Open: README banner (house rule), active-window-only screenshots.
