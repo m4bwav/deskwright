@@ -1,4 +1,0 @@
-mss>=9
-pillow>=10
-pynput>=1.7
-pywinctl>=0.4
