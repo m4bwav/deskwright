@@ -1,0 +1,22 @@
+name: test
+on: [push, pull_request]
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        python: ["3.9", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install . pytest
+      - name: unit tests (Linux needs an X display for pynput)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y xvfb && xvfb-run -a python -m pytest tests -q
+      - name: unit tests
+        if: runner.os != 'Linux'
+        run: python -m pytest tests -q

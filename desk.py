@@ -103,6 +103,12 @@ def cmd_scroll(a):
     print(f"scrolled {a.n}")
 
 
+def utf16_units(text):
+    """UTF-16 code units for text, CRLF folded to LF; emoji become surrogate pairs."""
+    raw = text.replace("\r\n", "\n").encode("utf-16-le")
+    return [int.from_bytes(raw[k:k + 2], "little") for k in range(0, len(raw), 2)]
+
+
 def _type_windows(text):
     # pynput's type() turns shifted characters into '#' on some Windows setups;
     # KEYEVENTF_UNICODE sends each character as itself, independent of layout.
@@ -122,8 +128,7 @@ def _type_windows(text):
     KEYEVENTF_UNICODE, KEYEVENTF_KEYUP = 0x4, 0x2
     VK_RETURN = 0x0D
     send = ctypes.windll.user32.SendInput
-    raw = text.replace("\r\n", "\n").encode("utf-16-le")
-    for unit in (int.from_bytes(raw[k:k + 2], "little") for k in range(0, len(raw), 2)):
+    for unit in utf16_units(text):
         evs = []
         for up in (0, KEYEVENTF_KEYUP):
             i = INPUT(type=1)
@@ -163,7 +168,7 @@ def cmd_keys(a):
     from pynput.keyboard import Controller
     kb = Controller()
     for combo in a.combos:
-        keys = [_key(k) for k in combo.split("+")]
+        keys = [_key(k) for k in parse_combo(combo)]
         for k in keys:
             kb.press(k)
         for k in reversed(keys):
@@ -190,18 +195,44 @@ def cmd_windows(a):
         print(f"{w.left:>6},{w.top:<6} {w.width:>5}x{w.height:<5} {w.title}")
 
 
+def _app_name(w):
+    # pywinctl's getAppName goes through WMI on Windows: ~3 s per window.
+    if sys.platform != "win32":
+        try:
+            return w.getAppName() or ""
+        except Exception:
+            return ""
+    import ctypes
+    from ctypes import wintypes
+    u32, k32 = ctypes.windll.user32, ctypes.windll.kernel32
+    pid = wintypes.DWORD()
+    u32.GetWindowThreadProcessId(wintypes.HWND(w.getHandle()), ctypes.byref(pid))
+    h = k32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not h:
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(1024)
+        size = wintypes.DWORD(len(buf))
+        if not k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+            return ""
+        return os.path.basename(buf.value)
+    finally:
+        k32.CloseHandle(h)
+
+
 def cmd_focus(a):
     rx = re.compile(a.pattern, re.I)
-    for w in _windows():
-        if rx.search(w.title) or rx.search(w.getAppName() or ""):
-            if w.isMinimized:
-                w.restore()
-            if a.max:
-                w.maximize()
-            w.activate()
-            print(f"focused '{w.title}'")
-            return
-    raise SystemExit(f"no window matches '{a.pattern}'")
+    wins = _windows()
+    match = next((w for w in wins if rx.search(w.title)), None) \
+        or next((w for w in wins if rx.search(_app_name(w))), None)
+    if not match:
+        raise SystemExit(f"no window matches '{a.pattern}'")
+    if match.isMinimized:
+        match.restore()
+    if a.max:
+        match.maximize()
+    match.activate()
+    print(f"focused '{match.title}'")
 
 
 def cmd_open(a):
@@ -209,13 +240,26 @@ def cmd_open(a):
     print(f"opened {a.url}")
 
 
-def main():
-    _dpi_aware()
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            stream.reconfigure(errors="replace")
-        except Exception:
-            pass
+def parse_combo(combo):
+    """'ctrl+shift+t' -> ['ctrl', 'shift', 't']; a lone '+' is the plus key."""
+    if combo == "+":
+        return ["+"]
+    parts = combo.split("+")
+    if combo.endswith("++"):
+        parts = parts[:-2] + ["+"]
+    if any(p == "" for p in parts):
+        raise SystemExit(f"bad key combo: {combo!r}")
+    return parts
+
+
+def scale_point(x, y, scale, origin=(0, 0)):
+    """Map a point in a scaled screenshot back to desktop pixels."""
+    if scale <= 0:
+        raise ValueError("scale must be positive")
+    return int(round(origin[0] + x / scale)), int(round(origin[1] + y / scale))
+
+
+def build_parser():
     p = argparse.ArgumentParser(prog="desk", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("shot"); s.add_argument("--screen", type=int); s.add_argument("--scale", type=float, default=1.0)
@@ -230,7 +274,19 @@ def main():
     sub.add_parser("windows").set_defaults(f=cmd_windows)
     sub.add_parser("screens").set_defaults(f=cmd_screens)
     s = sub.add_parser("open"); s.add_argument("url"); s.set_defaults(f=cmd_open)
-    a = p.parse_args()
+    return p
+
+
+def main(argv=None):
+    _dpi_aware()
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except Exception:
+            pass
+    a = build_parser().parse_args(argv)
+    if a.cmd == "shot" and a.scale <= 0:
+        raise SystemExit("--scale must be positive")
     a.f(a)
 
 

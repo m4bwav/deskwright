@@ -38,6 +38,16 @@ desk click 640 420                 # act
 desk shot --window --scale 0.5     # check
 ```
 
+## Tests
+
+```sh
+pip install pytest
+python -m pytest tests                      # unit tests, no desktop needed (CI runs these on Windows, macOS, Linux)
+DESKWRIGHT_LIVE=1 python -m pytest tests    # plus live tests: drives a real desktop against tests/target_app.py
+```
+
+The live tests open a small window that records exactly what it receives (text, clicks, scrolls, keys) and check each command against it, screenshots included. Keep hands off the mouse and keyboard while they run (about a minute).
+
 ## Known limits
 
 - `type` sends about 50 characters a second; slow apps drop keys if pushed faster.
