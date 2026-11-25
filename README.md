@@ -2,7 +2,7 @@
 
 Let an AI agent (or you) see and drive a desktop from a shell: screenshots of every monitor or just the active window, clicks, scrolling, typing, key combos, focusing windows, opening URLs. Works where an agent has a shell but no computer-use or browser tools.
 
-Runs on **Windows, macOS and Linux (X11)** with Python 3.9+. A dependency-free PowerShell version, `desk.ps1`, is kept for Windows machines without Python.
+Runs on **Windows, macOS and Linux (X11)** with Python 3.10+. A dependency-free PowerShell version, `desk.ps1`, is kept for Windows machines without Python.
 
 ## Install
 

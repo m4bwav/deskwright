@@ -4,7 +4,7 @@ version = "0.3.0"
 description = "See and drive a desktop from a shell: screenshots, clicks, keys, windows. Windows, macOS, Linux/X11."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = ["mss>=9", "pillow>=10", "pynput>=1.7", "pywinctl>=0.4"]
 
 [project.scripts]
