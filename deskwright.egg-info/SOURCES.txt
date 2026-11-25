@@ -1,0 +1,10 @@
+LICENSE
+README.md
+desk.py
+pyproject.toml
+deskwright.egg-info/PKG-INFO
+deskwright.egg-info/SOURCES.txt
+deskwright.egg-info/dependency_links.txt
+deskwright.egg-info/entry_points.txt
+deskwright.egg-info/requires.txt
+deskwright.egg-info/top_level.txt

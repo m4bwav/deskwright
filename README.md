@@ -1,36 +1,51 @@
 # deskwright
 
-One PowerShell script that lets an AI agent (or you) see and drive a Windows desktop: screenshots of every monitor, clicks, focusing windows, keystrokes, opening URLs. No modules, no installs, no browser extension. Useful when an agent has a shell but no computer-use or browser tools.
+Let an AI agent (or you) see and drive a desktop from a shell: screenshots of every monitor or just the active window, clicks, scrolling, typing, key combos, focusing windows, opening URLs. Works where an agent has a shell but no computer-use or browser tools.
+
+Runs on **Windows, macOS and Linux (X11)** with Python 3.9+. A dependency-free PowerShell version, `desk.ps1`, is kept for Windows machines without Python.
+
+## Install
+
+```sh
+pip install git+https://github.com/m4bwav/deskwright
+# or just: pip install mss pillow pynput pywinctl  and run desk.py
+```
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `desk.ps1 shot [-Screen N] [-Scale 0.5]` | One PNG per monitor in `%TEMP%\screens`, prints the paths and bounds. `-Scale` shrinks the image (a full 2560x1440 shot costs a vision model far more than a half-size one). |
-| `desk.ps1 click X Y [-Right] [-Double]` | Click at virtual-desktop pixels. Monitors to the right of the primary start at its width. |
-| `desk.ps1 focus <process-or-title-regex> [-Max]` | Bring a window to the front, optionally maximized. |
-| `desk.ps1 keys "^l"` | Send keys to the focused window ([SendKeys syntax](https://learn.microsoft.com/dotnet/api/system.windows.forms.sendkeys)). |
-| `desk.ps1 open <url>` | Open a URL in Chrome with the Default profile. |
-| `desk.ps1 windows` | List visible top-level windows. |
-| `desk.ps1 screens` | List monitors and their bounds. |
+| `desk shot [--screen N] [--scale 0.5] [--window]` | PNG per monitor (or only the active window) in `<tmp>/screens`, prints paths and bounds. `--scale` shrinks images; vision models pay per pixel. |
+| `desk click X Y [--right] [--double]` | Click at virtual-desktop pixels. |
+| `desk move X Y` | Move the pointer. |
+| `desk scroll N [--at X Y]` | Scroll N notches, negative is down. |
+| `desk type "text"` | Type literal text. |
+| `desk keys ctrl+l enter` | Press key combos in order (`ctrl`, `alt`, `shift`, `cmd`/`win`, `tab`, `esc`, `f5`, letters...). |
+| `desk focus <regex> [--max]` | Bring the first window whose title or app matches to the front. |
+| `desk windows` | List windows with bounds. |
+| `desk screens` | List monitors with bounds. |
+| `desk open <url>` | Open a URL in the default browser. |
 
-Screenshot pixels map 1:1 to click coordinates at `-Scale 1`; divide by the scale otherwise. The script calls `SetProcessDPIAware`, so coordinates are physical pixels on scaled displays.
+Screenshot pixels map 1:1 to click coordinates at `--scale 1`; divide by the scale otherwise. On Windows the script is per-monitor DPI aware, so coordinates are physical pixels.
 
-## Example
+## Example: an agent loop
 
-```powershell
-.\desk.ps1 open https://example.com
-.\desk.ps1 focus chrome -Max
-.\desk.ps1 shot -Screen 0 -Scale 0.5
-.\desk.ps1 click 640 420
+```sh
+desk open https://example.com
+desk focus example --max
+desk shot --window --scale 0.5     # look
+desk click 640 420                 # act
+desk shot --window --scale 0.5     # check
 ```
 
-## Requirements
+## Platform notes
 
-Windows 10 or 11, Windows PowerShell 5.1 or PowerShell 7. Run it in an interactive desktop session: a service or a locked screen captures black frames.
+- **macOS:** grant your terminal Screen Recording and Accessibility permission (System Settings > Privacy & Security), or screenshots come back blank and input is ignored.
+- **Linux:** X11 sessions work. Wayland blocks global screenshots and synthetic input for ordinary apps; run an X11 session or XWayland apps.
+- **All:** run in an interactive, unlocked desktop session. Services and locked screens capture black frames.
 
 ## Safety
 
-It does exactly what it is told, on the real desktop. Agents driving it should screenshot before and after every click, and never type passwords or approve payments through it.
+It does exactly what it is told, on the real desktop. Agents driving it should screenshot before and after every action, and never type passwords or approve payments through it. Screenshots can contain anything that was on screen; delete `<tmp>/screens` when done.
 
 MIT licensed.
